@@ -1,6 +1,8 @@
 ﻿using AssetStudio;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -367,9 +369,11 @@ namespace AssetStudioGUI
                 int exportedCount = 0;
                 int i = 0;
                 Progress.Reset();
+                var assetPathIdPathMap = new OrderedDictionary();
                 foreach (var asset in toExportAssets)
                 {
                     string exportPath;
+                    string exportFullPath = "";
                     switch (Properties.Settings.Default.assetGroupOption)
                     {
                         case 0: //type name
@@ -399,24 +403,28 @@ namespace AssetStudioGUI
                         switch (exportType)
                         {
                             case ExportType.Raw:
-                                if (ExportRawFile(asset, exportPath))
+                                exportFullPath = ExportRawFile(asset, exportPath);
+                                if (exportFullPath != null)
                                 {
                                     exportedCount++;
                                 }
                                 break;
                             case ExportType.Dump:
-                                if (ExportDumpFile(asset, exportPath))
+                                exportFullPath = ExportDumpFile(asset, exportPath);
+                                if (exportFullPath != null)
                                 {
                                     exportedCount++;
                                 }
                                 break;
                             case ExportType.Convert:
-                                if (ExportConvertFile(asset, exportPath))
+                                exportFullPath = ExportConvertFile(asset, exportPath);
+                                if (exportFullPath != null)
                                 {
                                     exportedCount++;
                                 }
                                 break;
                         }
+                        assetPathIdPathMap[asset.m_PathID] = exportFullPath.Replace(savePath, "");
                     }
                     catch (Exception ex)
                     {
@@ -425,6 +433,9 @@ namespace AssetStudioGUI
 
                     Progress.Report(++i, toExportCount);
                 }
+
+                var str = JsonConvert.SerializeObject(assetPathIdPathMap, Formatting.Indented);
+                File.WriteAllText(savePath + "/pathid-filepath.map.json", str);
 
                 var statusText = exportedCount == 0 ? "Nothing exported." : $"Finished exporting {exportedCount} assets.";
 
